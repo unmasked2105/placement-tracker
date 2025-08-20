@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title>Placement Tracker</title>
+	<style>
+		:root { --bg: #0b0c0f; --fg: #e8e9ee; --muted:#a5a8b3; --card:#161821; --accent:#4f46e5; --danger:#dc2626; --ok:#16a34a; }
+		* { box-sizing: border-box; }
+		body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, "Apple Color Emoji", "Segoe UI Emoji"; background: var(--bg); color: var(--fg); }
+		a { color: #60a5fa; }
+		.container { max-width: 1000px; margin: 0 auto; padding: 16px; }
+		.card { background: var(--card); border: 1px solid #232533; border-radius: 12px; padding: 16px; }
+		.input { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #2a2d3d; background: #0f1117; color: var(--fg); }
+		.select { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #2a2d3d; background: #0f1117; color: var(--fg); }
+		.btn { padding: 10px 14px; border: 0; border-radius: 8px; background: #2a2d3d; color: var(--fg); cursor: pointer; }
+		.btn.primary { background: var(--accent); }
+		.btn.danger { background: var(--danger); }
+		.btn.ok { background: var(--ok); }
+		.row { display: grid; grid-template-columns: 1fr; gap: 12px; }
+		@media (min-width: 640px) { .row.cols-2 { grid-template-columns: 1fr 1fr; } .row.cols-3 { grid-template-columns: 1fr 1fr 1fr; } }
+		.header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+		.badge { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid #2a2d3d; color: var(--muted); }
+		.table-wrap { overflow-x: auto; }
+		table { width: 100%; border-collapse: collapse; min-width: 720px; }
+		th, td { padding: 10px; border-bottom: 1px solid #222636; text-align: left; }
+		tr:hover { background: #121421; }
+		img.thumb { height: 40px; border-radius: 6px; }
+		.tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+		.tab { padding: 8px 12px; border-radius: 8px; border: 1px solid #2a2d3d; cursor: pointer; color: var(--muted); }
+		.tab.active { color: var(--fg); background: #1a1d2b; }
+		.hidden { display: none; }
+	</style>
+</head>
+<body>
+	<div class="container">
+		<div class="header">
+			<div style="display:flex; align-items:center; gap:10px">
+				<div style="font-weight:700">Placement Tracker</div>
+				<span class="badge">MERN • JWT</span>
+			</div>
+			<div id="userBar" class="hidden" style="display:flex; align-items:center; gap:8px">
+				<span id="userEmail" class="badge"></span>
+				<button class="btn" onclick="logout()">Sign out</button>
+			</div>
+		</div>
+
+		<!-- Auth View -->
+		<div id="authView" class="card">
+			<div class="tabs">
+				<div id="loginTab" class="tab active" onclick="switchAuthTab('login')">Login</div>
+				<div id="signupTab" class="tab" onclick="switchAuthTab('signup')">Sign up</div>
+			</div>
+			<form id="loginForm" onsubmit="login(event)">
+				<div class="row">
+					<input id="loginEmail" class="input" placeholder="Email" />
+					<input id="loginPassword" class="input" placeholder="Password" type="password" />
+				</div>
+				<div style="margin-top:12px; display:flex; gap:8px">
+					<button class="btn primary" type="submit">Login</button>
+				</div>
+			</form>
+
+			<form id="signupForm" class="hidden" onsubmit="signup(event)">
+				<div class="row">
+					<input id="signupEmail" class="input" placeholder="Email" required />
+					<input id="signupUsername" class="input" placeholder="Username" required />
+					<input id="signupPhone" class="input" placeholder="Phone (+91xxxxxxxxxx)" required />
+					<input id="signupPassword" class="input" placeholder="Password" type="password" required />
+				</div>
+				<div style="margin-top:12px; display:flex; gap:8px">
+					<button class="btn ok" type="submit">Create account</button>
+				</div>
+			</form>
+			<div id="authMsg" style="margin-top:10px; color: var(--muted)"></div>
+		</div>
+
+		<!-- Dashboard View -->
+		<div id="dashboardView" class="hidden">
+			<div class="card" style="margin-bottom:12px">
+				<div style="font-weight:600; margin-bottom:8px">Add application</div>
+				<form id="addForm" onsubmit="addApplication(event)">
+					<div class="row cols-3">
+						<input id="companyName" class="input" placeholder="Company name" required />
+						<input id="websiteUrl" class="input" placeholder="Website URL" required />
+						<input id="appliedAt" class="input" type="datetime-local" required />
+					</div>
+					<div class="row cols-3" style="margin-top:10px">
+						<select id="status" class="select">
+							<option value="applied">Applied</option>
+							<option value="remaining">Remaining</option>
+						</select>
+						<input id="notes" class="input" placeholder="Notes (optional)" />
+						<input id="imageFile" class="input" type="file" accept="image/*" />
+					</div>
+					<div style="margin-top:12px; display:flex; gap:8px">
+						<button class="btn primary" type="submit">Add</button>
+						<button class="btn" type="button" onclick="loadItems()">Refresh</button>
+					</div>
+				</form>
+			</div>
+
+			<div class="card">
+				<div style="display:flex; justify-content: space-between; align-items:center; gap:8px; margin-bottom:8px">
+					<div style="font-weight:600">Applications</div>
+					<div style="display:flex; gap:8px">
+						<button class="btn" onclick="setFilter(null)">All</button>
+						<button class="btn" onclick="setFilter('remaining')">Remaining</button>
+					</div>
+				</div>
+				<div class="table-wrap">
+					<table>
+						<thead>
+							<tr>
+								<th>Company</th>
+								<th>Website</th>
+								<th>Applied At</th>
+								<th>Image</th>
+								<th>Status</th>
+								<th>Actions</th>
+							</tr>
+						</thead>
+						<tbody id="rows"></tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<script>
+		const API = window.location.origin;
+		let currentFilter = null;
+
+		function authHeader() {
+			const t = localStorage.getItem('token');
+			return t ? { 'Authorization': 'Bearer ' + t } : {};
+		}
+
+		function switchAuthTab(which) {
+			document.getElementById('loginTab').classList.toggle('active', which === 'login');
+			document.getElementById('signupTab').classList.toggle('active', which === 'signup');
+			document.getElementById('loginForm').classList.toggle('hidden', which !== 'login');
+			document.getElementById('signupForm').classList.toggle('hidden', which !== 'signup');
+		}
+
+		async function login(e) {
+			e.preventDefault();
+			const email = document.getElementById('loginEmail').value.trim();
+			const password = document.getElementById('loginPassword').value;
+			const res = await fetch(API + '/auth/login', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ email, password }) });
+			const data = await res.json();
+			if (data.token) {
+				localStorage.setItem('token', data.token);
+				localStorage.setItem('email', email);
+				afterLogin();
+			} else {
+				document.getElementById('authMsg').textContent = data.error || 'Login failed';
+			}
+		}
+
+		async function signup(e) {
+			e.preventDefault();
+			const email = document.getElementById('signupEmail').value.trim();
+			const username = document.getElementById('signupUsername').value.trim();
+			const phoneE164 = document.getElementById('signupPhone').value.trim();
+			const password = document.getElementById('signupPassword').value;
+			const res = await fetch(API + '/auth/signup', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ email, username, password, phoneE164 }) });
+			const data = await res.json();
+			if (data.ok) {
+				document.getElementById('authMsg').textContent = 'Account created. Please login.';
+				switchAuthTab('login');
+			} else {
+				document.getElementById('authMsg').textContent = data.error || 'Signup failed';
+			}
+		}
+
+		function show(view) {
+			document.getElementById('authView').classList.toggle('hidden', view !== 'auth');
+			document.getElementById('dashboardView').classList.toggle('hidden', view !== 'dashboard');
+			document.getElementById('userBar').classList.toggle('hidden', view !== 'dashboard');
+		}
+
+		async function afterLogin() {
+			show('dashboard');
+			document.getElementById('userEmail').textContent = localStorage.getItem('email') || '';
+			try { await fetch(API + '/events/app-open', { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeader() } }); } catch (e) {}
+			loadItems();
+		}
+
+		function logout() {
+			localStorage.removeItem('token');
+			localStorage.removeItem('email');
+			show('auth');
+		}
+
+		async function addApplication(e) {
+			e.preventDefault();
+			const companyName = document.getElementById('companyName').value.trim();
+			const websiteUrl = document.getElementById('websiteUrl').value.trim();
+			const appliedAtRaw = document.getElementById('appliedAt').value;
+			const status = document.getElementById('status').value;
+			const notes = document.getElementById('notes').value.trim();
+			let imageUrl = '';
+			const fileInput = document.getElementById('imageFile');
+			if (fileInput.files && fileInput.files[0]) {
+				const fd = new FormData();
+				fd.append('file', fileInput.files[0]);
+				const up = await fetch(API + '/upload', { method:'POST', headers:{ ...authHeader() }, body: fd });
+				const udata = await up.json();
+				imageUrl = udata.url || '';
+			}
+			const appliedAt = new Date(appliedAtRaw).toISOString();
+			await fetch(API + '/applications', { method:'POST', headers:{ 'Content-Type': 'application/json', ...authHeader() }, body: JSON.stringify({ companyName, websiteUrl, appliedAt, imageUrl, status, notes }) });
+			document.getElementById('addForm').reset();
+			loadItems();
+		}
+
+		function setFilter(f) { currentFilter = f; loadItems(f); }
+
+		async function loadItems() {
+			let url = API + '/applications';
+			if (currentFilter) url += ('?status=' + encodeURIComponent(currentFilter));
+			const res = await fetch(url, { headers: { ...authHeader() } });
+			const items = await res.json();
+			const tbody = document.getElementById('rows');
+			tbody.innerHTML = '';
+			for (const it of items) {
+				const tr = document.createElement('tr');
+				tr.innerHTML = `
+					<td>${escapeHtml(it.companyName)}</td>
+					<td><a href="${escapeAttr(it.websiteUrl)}" target="_blank">${escapeHtml(it.websiteUrl)}</a></td>
+					<td>${new Date(it.appliedAt).toLocaleString()}</td>
+					<td>${it.imageUrl ? `<img class="thumb" src="${escapeAttr(it.imageUrl)}" />` : '-'}</td>
+					<td>${it.status}</td>
+					<td style="display:flex; gap:6px">
+						<button class="btn" onclick="toggleStatus('${it._id}', '${it.status}')">Toggle</button>
+						<button class="btn danger" onclick="delItem('${it._id}')">Delete</button>
+					</td>
+				`;
+				tbody.appendChild(tr);
+			}
+		}
+
+		function escapeHtml(s) {
+			return (s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+		}
+		function escapeAttr(s) {
+			return (s || '').replace(/["']/g, c => ({'"':'&quot;','\'':'&#39;'}[c]));
+		}
+
+		async function toggleStatus(id, cur) {
+			const next = cur === 'applied' ? 'remaining' : 'applied';
+			await fetch(API + '/applications/' + id, { method:'PUT', headers:{ 'Content-Type': 'application/json', ...authHeader() }, body: JSON.stringify({ status: next }) });
+			loadItems();
+		}
+
+		async function delItem(id) {
+			if (!confirm('Delete this entry?')) return;
+			await fetch(API + '/applications/' + id, { method:'DELETE', headers:{ ...authHeader() } });
+			loadItems();
+		}
+
+		(function init() {
+			const token = localStorage.getItem('token');
+			if (token) { afterLogin(); } else { show('auth'); }
+		})();
+	</script>
+</body>
+</html>
+
+
